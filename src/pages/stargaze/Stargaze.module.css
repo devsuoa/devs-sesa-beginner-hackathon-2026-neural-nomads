@@ -1,0 +1,213 @@
+.page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.header {
+  margin-bottom: 36px;
+}
+
+.title {
+  font-size: 52px;
+  font-weight: 800;
+  margin: 0 0 10px;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, #ffffff 40%, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Input row */
+
+.inputRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+
+.input {
+  flex: 1;
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+
+.input:focus {
+  border-color: #a855f7;
+}
+
+.input::placeholder {
+  color: #64748b;
+}
+
+.button {
+  padding: 13px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #a855f7;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.button:hover:not(:disabled) {
+  background: #9333ea;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Loading */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: #94a3b8;
+  font-size: 15px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #334155;
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Results */
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: fadeUp 0.35s ease both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.box {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 28px 24px;
+}
+
+/* Decision box variants */
+
+.go {
+  border-color: #22c55e44;
+}
+
+.nogo {
+  border-color: #ef444444;
+}
+
+.decision {
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.go .decision {
+  color: #22c55e;
+}
+
+.nogo .decision {
+  font-size: 44px;
+  color: #ef4444;
+}
+
+.reason {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 15px;
+}
+
+/* Sky list box */
+
+.boxLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #64748b;
+  margin: 0 0 14px;
+}
+
+.skyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skyList li {
+  padding: 10px 16px;
+  background: #0f172a;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #e2e8f0;
+  text-align: left;
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+  .page {
+    padding: 40px 16px;
+  }
+
+  .title {
+    font-size: 40px;
+  }
+
+  .inputRow {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+}
