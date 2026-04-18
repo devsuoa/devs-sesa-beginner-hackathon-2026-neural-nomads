@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMemo, useState } from 'react';
-import * as Astronomy from 'astronomy-engine';
 import { getMoonPhase, calculateDayScore, type DayScore } from '../utils/astronomy';
 import type { DailyWeatherData } from '../hooks/useWeather';
 import MoonVisual from './MoonVisual';
@@ -12,23 +11,6 @@ interface Props {
   city: string;
   onSelectTonight: () => void;
   weatherLoading: boolean;
-}
-
-function getSunsetSunrise(date: Date, lat: number, lon: number): { sunset: Date; sunrise: Date } {
-  const observer = new Astronomy.Observer(lat, lon, 0);
-  const noon = new Date(date); noon.setHours(12, 0, 0, 0);
-  const sunsetEvt = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, noon, 1);
-  const nextNoon = new Date(noon); nextNoon.setDate(nextNoon.getDate() + 1);
-  const sunriseEvt = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, noon, 1.5);
-  const sunset = sunsetEvt ? sunsetEvt.date : new Date(noon.getTime() + 6 * 3600_000);
-  // Ensure sunrise is after sunset
-  let sunrise = sunriseEvt ? sunriseEvt.date : new Date(nextNoon.getTime() - 6 * 3600_000);
-  if (sunrise <= sunset) {
-    const nextSearch = new Date(sunset.getTime() + 3600_000);
-    const next = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, nextSearch, 1);
-    if (next) sunrise = next.date;
-  }
-  return { sunset, sunrise };
 }
 
 function fmtHour(d: Date): string {
@@ -106,7 +88,7 @@ function DayCard({ scored, index, isBest, isSelected, onClick }: {
   );
 }
 
-function DetailPanel({ scored, weatherDay, nextWeatherDay, onGoTonight, userLat, userLon }: {
+function DetailPanel({ scored, weatherDay, nextWeatherDay, onGoTonight }: {
   scored: DayScore; weatherDay?: DailyWeatherData; nextWeatherDay?: DailyWeatherData; onGoTonight: () => void; userLat: number; userLon: number;
 }) {
   const moon = getMoonPhase(scored.date);

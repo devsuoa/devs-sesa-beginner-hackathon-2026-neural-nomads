@@ -636,9 +636,6 @@ function CockpitHUD({ speed, lockedPlanet, flying }: { speed: number; lockedPlan
     return () => clearInterval(id);
   }, []);
 
-  // Attitude indicator — fake pitch/roll that drifts over time for flavour
-  const pitch = Math.sin(tick * 0.03) * 8;
-  const roll = Math.sin(tick * 0.05 + 1) * 6;
   const heading = (tick * 0.4) % 360;
 
   // Rivet row helper
