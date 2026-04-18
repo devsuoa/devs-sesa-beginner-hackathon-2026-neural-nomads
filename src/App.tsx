@@ -1,68 +1,104 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import StarField from './components/StarField';
 import Header from './components/Header';
 import WeekPlanner from './components/WeekPlanner';
 import TonightView from './components/TonightView';
+import LoadingScreen from './components/LoadingScreen';
 import { useLocation } from './hooks/useLocation';
 import { useWeather } from './hooks/useWeather';
 import { useISS } from './hooks/useISS';
 
 type View = 'planner' | 'tonight';
 
+interface OverrideLocation {
+  lat: number;
+  lon: number;
+  city: string;
+  country: string;
+}
+
 export default function App() {
   const [view, setView] = useState<View>('planner');
-  const location = useLocation();
-  const weather = useWeather(location.lat, location.lon);
-  const iss = useISS(location.lat, location.lon);
+  const [appReady, setAppReady] = useState(false);
+  const [override, setOverride] = useState<OverrideLocation | null>(null);
+
+  const deviceLocation = useLocation();
+
+  // Merge device location with any manual override
+  const activeLocation = override ?? {
+    lat: deviceLocation.lat,
+    lon: deviceLocation.lon,
+    city: deviceLocation.city,
+    country: deviceLocation.country,
+  };
+
+  const weather = useWeather(activeLocation.lat, activeLocation.lon);
+  const iss = useISS(activeLocation.lat, activeLocation.lon);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAppReady(true), 1600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleCitySelect = (lat: number, lon: number, city: string, country: string) => {
+    setOverride({ lat, lon, city, country });
+  };
 
   return (
     <div className="relative min-h-screen font-outfit">
       <StarField />
 
-      <div className="relative z-10">
-        <Header
-          view={view}
-          onViewChange={setView}
-          city={location.city}
-          country={location.country}
-        />
+      <AnimatePresence>
+        {!appReady && <LoadingScreen />}
+      </AnimatePresence>
 
-        <AnimatePresence mode="wait">
-          {view === 'planner' ? (
-            <motion.div
-              key="planner"
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 30 }}
-              transition={{ duration: 0.4 }}
-            >
-              <WeekPlanner
-                weatherDays={weather.days}
-                userLat={location.lat}
-                city={location.city}
-                onSelectTonight={() => setView('tonight')}
-                weatherLoading={weather.loading}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="tonight"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.4 }}
-            >
-              <TonightView
-                userLat={location.lat}
-                userLon={location.lon}
-                city={location.city}
-                iss={iss}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {appReady && (
+        <div className="relative z-10">
+          <Header
+            view={view}
+            onViewChange={setView}
+            city={activeLocation.city}
+            country={activeLocation.country}
+            onCitySelect={handleCitySelect}
+          />
+
+          <AnimatePresence mode="wait">
+            {view === 'planner' ? (
+              <motion.div
+                key="planner"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.35 }}
+              >
+                <WeekPlanner
+                  weatherDays={weather.days}
+                  userLat={activeLocation.lat}
+                  city={activeLocation.city}
+                  onSelectTonight={() => setView('tonight')}
+                  weatherLoading={weather.loading}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="tonight"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.35 }}
+              >
+                <TonightView
+                  userLat={activeLocation.lat}
+                  userLon={activeLocation.lon}
+                  city={activeLocation.city}
+                  iss={iss}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
