@@ -216,28 +216,55 @@ export default function WeekPlanner({ weatherDays, userLat: _u, city, onSelectTo
   const tonightMoon = getMoonPhase(new Date());
 
   return (
-    <div className="min-h-screen pt-20 pb-16 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen pt-20 pb-16">
 
-        {/* ── Hero ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="text-center pt-10 pb-12"
-        >
-          <div className="pill pill-primary mb-5">
+      {/* ── Hero (full-bleed) ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7 }}
+        className="relative w-full overflow-hidden mb-12"
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${import.meta.env.BASE_URL}hero-bg.jpg)` }}
+        />
+        {/* Dark tint for legibility */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60" />
+        {/* Blend into the page background at the bottom */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#080d1a]" />
+
+        <div className="relative text-center px-6 py-24 sm:py-32 max-w-5xl mx-auto">
+          <div className="pill pill-primary mb-6 mx-auto">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
             {weatherLoading ? 'Fetching live weather…' : `Live conditions · ${city}`}
           </div>
-          <h1 className="text-5xl sm:text-7xl font-black leading-none tracking-tight mb-4">
-            <span className="text-white">Master the </span>
-            <span className="text-gradient">Night Sky.</span>
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase leading-[1.05] tracking-tight text-white mb-6 drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]">
+            Master the night sky.
+            <br />
+            Plan your perfect stargazing night.
           </h1>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed">
+          <p className="text-slate-200 text-base sm:text-lg max-w-xl mx-auto leading-relaxed mb-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
             We score each night this week out of 10 using real weather data and live moon calculations — so you only go out when it's worth it.
           </p>
-        </motion.div>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <button
+              onClick={() => document.getElementById('forecast')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-8 py-3.5 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-bold uppercase tracking-wider text-sm shadow-[0_0_40px_rgba(139,92,246,0.5)] hover:shadow-[0_0_60px_rgba(139,92,246,0.7)] hover:-translate-y-0.5 transition-all"
+            >
+              Check the planner
+            </button>
+            <button
+              onClick={onSelectTonight}
+              className="px-8 py-3.5 rounded-full border border-white/70 text-white font-bold uppercase tracking-wider text-sm bg-white/5 backdrop-blur-sm hover:bg-white/15 hover:-translate-y-0.5 transition-all"
+            >
+              Explore tonight's sky
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="max-w-6xl mx-auto px-4">
 
         {/* ── Tonight Summary Bar ── */}
         {tonight && (
@@ -274,7 +301,7 @@ export default function WeekPlanner({ weatherDays, userLat: _u, city, onSelectTo
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
 
           {/* Day cards */}
-          <div className="space-y-3">
+          <div id="forecast" className="space-y-3 scroll-mt-24">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-white font-bold text-lg">7-Night Forecast</h2>
               <span className="text-slate-500 text-sm">Tap any night for details</span>

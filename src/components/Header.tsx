@@ -27,7 +27,7 @@ export default function Header({ view, onViewChange, city, country: _country, on
             <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-secondary border border-dark-bg animate-pulse" />
           </div>
           <div className="hidden sm:block">
-            <div className="text-base font-black text-gradient leading-tight">StarGaze NZ</div>
+            <div className="text-base font-black text-gradient leading-tight">StarGaze</div>
             <div className="text-[10px] text-muted-text leading-none">Your Personal Sky Guide</div>
           </div>
         </div>
