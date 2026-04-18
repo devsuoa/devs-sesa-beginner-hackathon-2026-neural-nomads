@@ -48,7 +48,7 @@ export default function LoadingScreen() {
             transition={{ delay: 0.3 }}
             className="text-3xl font-black text-gradient mb-2"
           >
-            StarGaze NZ
+            StarGaze
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
