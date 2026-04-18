@@ -308,8 +308,113 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
   const planetsRef = useRef<ReturnType<typeof getVisiblePlanets>>([]);
   const hoveredRef = useRef<string | null>(null);
   const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
+
+  // Rocket cursor
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rocketRef = useRef<HTMLDivElement>(null);
+  const rocketTrailRef = useRef<HTMLDivElement>(null);
+  const rocketPosRef = useRef({ x: -200, y: -200 });
+  const rocketTargetRef = useRef({ x: -200, y: -200 });
+  const rocketAngleRef = useRef(0);
+  const rocketSpeedRef = useRef(0);
+  const [rocketVisible, setRocketVisible] = useState(false);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
+      const inside = x >= 0 && y >= 0 && x <= r.width && y <= r.height;
+      if (inside) {
+        rocketTargetRef.current = { x, y };
+        setRocketVisible(true);
+      } else {
+        setRocketVisible(false);
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
+  useEffect(() => {
+    let id = 0;
+    let last = performance.now();
+    const trailPoints: Array<{ x: number; y: number; t: number }> = [];
+    const tick = (now: number) => {
+      const dt = Math.min(50, now - last);
+      last = now;
+      const el = rocketRef.current;
+      if (el) {
+        const cur = rocketPosRef.current;
+        const tgt = rocketTargetRef.current;
+        const dx = tgt.x - cur.x;
+        const dy = tgt.y - cur.y;
+        const ease = 1 - Math.exp(-dt / 70);
+        cur.x += dx * ease;
+        cur.y += dy * ease;
+        const moveLen = Math.hypot(dx, dy);
+        rocketSpeedRef.current = rocketSpeedRef.current * 0.85 + Math.min(1, moveLen / 60) * 0.15;
+        if (moveLen > 1.2) {
+          const targetAngle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+          let da = targetAngle - rocketAngleRef.current;
+          while (da > 180) da -= 360;
+          while (da < -180) da += 360;
+          rocketAngleRef.current += da * 0.22;
+        }
+        el.style.transform = `translate(${cur.x}px, ${cur.y}px) translate(-50%, -50%) rotate(${rocketAngleRef.current}deg)`;
+        const thrust = 0.6 + rocketSpeedRef.current * 1.6;
+        el.style.setProperty('--thrust', String(thrust));
+
+        // Trail
+        trailPoints.push({ x: cur.x, y: cur.y, t: now });
+        while (trailPoints.length > 18) trailPoints.shift();
+        const trail = rocketTrailRef.current;
+        if (trail) {
+          const dots = trail.children;
+          for (let i = 0; i < dots.length; i++) {
+            const p = trailPoints[trailPoints.length - 1 - i];
+            const d = dots[i] as HTMLElement;
+            if (p) {
+              const age = (now - p.t) / 900;
+              const alpha = Math.max(0, 1 - age) * (0.5 + rocketSpeedRef.current * 0.5);
+              const size = Math.max(1, 10 * (1 - age));
+              d.style.opacity = String(alpha);
+              d.style.width = `${size}px`;
+              d.style.height = `${size}px`;
+              d.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
+              d.style.display = '';
+            } else {
+              d.style.display = 'none';
+            }
+          }
+        }
+      }
+      id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  // Track which constellations are currently above the horizon
+  useEffect(() => {
+    const update = () => {
+      const lst = getLST(userLon, new Date());
+      const next = new Set<string>();
+      for (const c of CONSTELLATIONS) {
+        const { alt } = raDecToAltAz(c.ra, c.dec, lst, userLat);
+        if (alt > 0) next.add(c.name);
+      }
+      setVisibleNames(next);
+    };
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, [userLat, userLon]);
 
   // Update planet positions every 30 s (expensive astronomy calc)
   useEffect(() => {
@@ -360,13 +465,25 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
     const R = Math.hypot(canvas.width, canvas.height) / 2 * zoomRef.current;
     const lst = getLST(userLon, new Date());
     let hit: { name: string; dist: number } | null = null;
-    const threshold = 70 * Math.max(0.5, zoomRef.current * 0.8); // scale hit radius with zoom
+    const ctx = canvas.getContext('2d');
     for (const c of CONSTELLATIONS) {
       const { alt, az } = raDecToAltAz(c.ra, c.dec, lst, userLat);
       const pt = toScreen(alt, az, cx, cy, R, 0);
       if (!pt) continue;
-      const d = Math.hypot(mx - pt.x, my - pt.y);
-      if (d < threshold && (!hit || d < hit.dist)) hit = { name: c.name, dist: d };
+      // Label is drawn at (pt.x, pt.y - R*0.13) with font ~10-12px, centered
+      const lx = pt.x;
+      const ly = pt.y - R * 0.13;
+      let textW = (c.name.length + 2) * 7; // rough fallback
+      if (ctx) {
+        ctx.font = 'bold 12px Outfit';
+        textW = ctx.measureText(`${c.emoji} ${c.name}`).width;
+      }
+      const halfW = textW / 2 + 4;
+      const halfH = 10; // ~ line height / 2 + padding
+      if (mx >= lx - halfW && mx <= lx + halfW && my >= ly - halfH && my <= ly + halfH) {
+        const d = Math.hypot(mx - lx, my - ly);
+        if (!hit || d < hit.dist) hit = { name: c.name, dist: d };
+      }
     }
     return hit ? hit.name : null;
   }, [userLat, userLon]);
@@ -769,11 +886,12 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
   const info = selected ? CONSTELLATION_INFO[selected] : null;
 
   return (
-    <div className="w-full relative" style={{ height: '100vh', overflow: 'hidden' }}>
+    <div ref={containerRef} className="w-full relative" style={{ height: '100vh', overflow: 'hidden', cursor: 'none' }}>
       {/* Canvas — fills entire viewport */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full select-none ${hover ? 'cursor-pointer' : 'cursor-grab'} active:cursor-grabbing`}
+        style={{ cursor: 'none' }}
+        className={`absolute inset-0 w-full h-full select-none`}
         onMouseDown={e => startDrag(e.clientX, e.clientY)}
         onMouseMove={e => { moveDrag(e.clientX, e.clientY); onHoverMove(e.clientX, e.clientY); }}
         onMouseUp={e => endDrag(e.clientX, e.clientY)}
@@ -824,6 +942,70 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
             {b.label}
           </button>
         ))}
+      </div>
+
+      {/* Constellation list — left side */}
+      <div
+        className="absolute z-20"
+        style={{
+          left: 16,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 180,
+          maxHeight: '70vh',
+          background: 'rgba(10,16,36,0.75)',
+          border: '1px solid rgba(120,160,255,0.25)',
+          borderRadius: 10,
+          backdropFilter: 'blur(6px)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.45)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            padding: '8px 12px',
+            fontSize: 10,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: 'rgba(180,200,230,0.65)',
+            borderBottom: '1px solid rgba(120,160,255,0.15)',
+          }}
+        >
+          Constellations
+        </div>
+        <div style={{ overflowY: 'auto', padding: '4px 0' }}>
+          {CONSTELLATIONS.filter(c => visibleNames.has(c.name)).map(c => {
+            const isSel = selected === c.name;
+            return (
+              <button
+                key={c.name}
+                onClick={() => setSelected(prev => (prev === c.name ? null : c.name))}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '6px 12px',
+                  background: isSel ? 'rgba(167,139,250,0.18)' : 'transparent',
+                  border: 'none',
+                  color: isSel ? '#fef08a' : 'rgba(220,230,255,0.82)',
+                  fontSize: 12,
+                  fontWeight: isSel ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  borderLeft: isSel ? '2px solid #fef08a' : '2px solid transparent',
+                }}
+                onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(120,160,255,0.08)'; }}
+                onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <span>{c.emoji}</span>
+                <span>{c.name}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Hover tooltip */}
@@ -910,6 +1092,157 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Rocket trail — stays behind the rocket */}
+      <div
+        ref={rocketTrailRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 49,
+          opacity: rocketVisible ? 1 : 0,
+          transition: 'opacity 0.2s',
+        }}
+      >
+        {Array.from({ length: 18 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,230,160,0.95), rgba(255,120,40,0.6) 55%, rgba(200,40,10,0) 80%)',
+              mixBlendMode: 'screen',
+              willChange: 'transform, opacity',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Rocket cursor */}
+      <div
+        ref={rocketRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 28,
+          height: 56,
+          pointerEvents: 'none',
+          zIndex: 50,
+          willChange: 'transform',
+          opacity: rocketVisible ? 1 : 0,
+          transition: 'opacity 0.2s',
+          filter: 'drop-shadow(0 0 6px rgba(120,180,255,0.55))',
+          ['--thrust' as any]: '1',
+        } as any}
+      >
+        <svg width="28" height="56" viewBox="-24 -52 48 96" style={{ overflow: 'visible' }}>
+          <defs>
+            <linearGradient id="rocketHull" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#2a3050" />
+              <stop offset="45%" stopColor="#6f7fb0" />
+              <stop offset="65%" stopColor="#eaf0ff" />
+              <stop offset="100%" stopColor="#3a4570" />
+            </linearGradient>
+            <linearGradient id="rocketStripe" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#b2202e" />
+              <stop offset="50%" stopColor="#ff5a5a" />
+              <stop offset="100%" stopColor="#7a1520" />
+            </linearGradient>
+            <linearGradient id="rocketTip" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ffe88a" />
+              <stop offset="100%" stopColor="#d97a1a" />
+            </linearGradient>
+            <linearGradient id="rocketBooster" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#1a2040" />
+              <stop offset="50%" stopColor="#5a6a9a" />
+              <stop offset="100%" stopColor="#0e1428" />
+            </linearGradient>
+            <radialGradient id="rocketPort" cx="0.3" cy="0.3" r="0.85">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="40%" stopColor="#7fe5ff" />
+              <stop offset="100%" stopColor="#0a2a5a" />
+            </radialGradient>
+            <radialGradient id="flameOuter" cx="0.5" cy="0.05" r="0.95">
+              <stop offset="0%" stopColor="#fff7c2" stopOpacity="1" />
+              <stop offset="35%" stopColor="#ffb347" stopOpacity="0.95" />
+              <stop offset="70%" stopColor="#ff4a1a" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#ff1a00" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="flameInner" cx="0.5" cy="0.05" r="0.95">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+              <stop offset="45%" stopColor="#ffe58a" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#ff9e3a" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="flameCore" cx="0.5" cy="0.1" r="0.9">
+              <stop offset="0%" stopColor="#c8e9ff" stopOpacity="1" />
+              <stop offset="60%" stopColor="#9ec9ff" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#5a8fff" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Flame — drawn first so rocket sits above it */}
+          <g style={{ transform: 'scaleY(var(--thrust))', transformOrigin: '0 0', transformBox: 'fill-box' as any }}>
+            <ellipse cx="0" cy="22" rx="9" ry="28" fill="url(#flameOuter)" className="rocket-flame-outer" />
+            <ellipse cx="0" cy="15" rx="5.5" ry="18" fill="url(#flameInner)" className="rocket-flame-inner" />
+            <ellipse cx="0" cy="10" rx="2.3" ry="10" fill="url(#flameCore)" className="rocket-flame-core" />
+            {/* Side booster flames */}
+            <ellipse cx="-12" cy="14" rx="3.5" ry="12" fill="url(#flameOuter)" className="rocket-flame-outer" opacity="0.85" />
+            <ellipse cx="12" cy="14" rx="3.5" ry="12" fill="url(#flameOuter)" className="rocket-flame-outer" opacity="0.85" />
+          </g>
+
+          {/* Side boosters */}
+          <path d="M-13 -18 Q-15 -22 -13 -26 L-10 -26 L-10 0 L-15 2 L-15 -4 Q-16 -10 -13 -18 Z" fill="url(#rocketBooster)" stroke="rgba(10,15,35,0.8)" strokeWidth="0.5" />
+          <path d="M13 -18 Q15 -22 13 -26 L10 -26 L10 0 L15 2 L15 -4 Q16 -10 13 -18 Z" fill="url(#rocketBooster)" stroke="rgba(10,15,35,0.8)" strokeWidth="0.5" />
+          {/* Booster nozzle caps */}
+          <ellipse cx="-12.5" cy="0.5" rx="3" ry="1.4" fill="#0a0f1e" />
+          <ellipse cx="12.5" cy="0.5" rx="3" ry="1.4" fill="#0a0f1e" />
+
+          {/* Main booster nozzle */}
+          <path d="M-6 0 L-9 5 L9 5 L6 0 Z" fill="#0e1428" stroke="rgba(0,0,0,0.7)" strokeWidth="0.4" />
+
+          {/* Main body — tall capsule */}
+          <path
+            d="M-7 -28 Q-7 -42 0 -48 Q7 -42 7 -28 L7 0 L-7 0 Z"
+            fill="url(#rocketHull)"
+            stroke="rgba(30,40,70,0.9)"
+            strokeWidth="0.8"
+          />
+
+          {/* Red racing stripe mid-body */}
+          <rect x="-7" y="-16" width="14" height="5" fill="url(#rocketStripe)" />
+          <rect x="-7" y="-9" width="14" height="1.5" fill="url(#rocketStripe)" opacity="0.6" />
+
+          {/* Nose tip glow */}
+          <path d="M-3 -44 Q-3 -48 0 -48 Q3 -48 3 -44 L3 -40 L-3 -40 Z" fill="url(#rocketTip)" />
+          <circle cx="0" cy="-49" r="1.2" fill="#fff" opacity="0.9" />
+
+          {/* Body highlight */}
+          <path d="M-4.5 -40 Q-5 -22 -4.5 -2" stroke="rgba(255,255,255,0.45)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+
+          {/* Cockpit porthole */}
+          <circle cx="0" cy="-30" r="3.2" fill="url(#rocketPort)" stroke="rgba(220,230,255,0.85)" strokeWidth="0.9" />
+          <circle cx="-1.1" cy="-31" r="0.9" fill="rgba(255,255,255,0.85)" />
+
+          {/* Panel seams */}
+          <line x1="-7" y1="-20" x2="7" y2="-20" stroke="rgba(20,30,60,0.6)" strokeWidth="0.35" />
+          <line x1="-7" y1="-6" x2="7" y2="-6" stroke="rgba(20,30,60,0.6)" strokeWidth="0.35" />
+        </svg>
+      </div>
+
+      <style>{`
+        @keyframes rocket-flicker-outer { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(0.85, 1.12); } }
+        @keyframes rocket-flicker-inner { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.1, 0.9); } }
+        @keyframes rocket-flicker-core  { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(0.9, 1.2); } }
+        .rocket-flame-outer { transform-origin: 0 0; transform-box: fill-box; animation: rocket-flicker-outer 120ms infinite; }
+        .rocket-flame-inner { transform-origin: 0 0; transform-box: fill-box; animation: rocket-flicker-inner 90ms infinite; }
+        .rocket-flame-core  { transform-origin: 0 0; transform-box: fill-box; animation: rocket-flicker-core 70ms infinite; }
+      `}</style>
     </div>
   );
 }
