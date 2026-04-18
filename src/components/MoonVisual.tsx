@@ -1,101 +1,79 @@
 import { motion } from 'framer-motion';
 import { getMoonPhase } from '../utils/astronomy';
 
-interface Props {
-  size?: number;
-  animate?: boolean;
-}
+export default function MoonVisual({ size = 120 }: { size?: number }) {
+  const { moonLon, illumination, phaseName } = getMoonPhase(new Date());
 
-export default function MoonVisual({ size = 120, animate = true }: Props) {
-  const moon = getMoonPhase(new Date());
-  const { phase, illumination, phaseName } = moon;
+  // moonLon: 0=new, 90=first quarter, 180=full, 270=last quarter
+  const isWaxing = moonLon < 180;
+  // Shadow ellipse: at 0° and 180° the rx is maximal (covers half), at 90°/270° it's 0
+  const rx = Math.abs(Math.cos(moonLon * Math.PI / 180)) * (size / 2 - 2);
+  const r = size / 2 - 2;
 
-  // Draw the moon shadow based on phase using SVG clipPath technique
-  // phase 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter
-  const isWaxing = phase < 0.5;
-
-  // The shadow ellipse x-radius: 0 at new/full, size/2 at quarters
-  const shadowRx = Math.abs(Math.cos(phase * Math.PI * 2)) * size / 2;
-  const shadowFill = isWaxing ? '#0a0f1e' : '#c8c8c8';
-  const shadowFlip = isWaxing ? 1 : -1;
+  // The lit side is on the right when waxing, left when waning
+  const litSide = isWaxing ? 1 : -1;
 
   return (
     <motion.div
-      initial={animate ? { scale: 0.8, opacity: 0 } : {}}
-      animate={animate ? { scale: 1, opacity: 1 } : {}}
-      transition={{ duration: 0.8, ease: 'easeOut' }}
-      className="relative inline-flex flex-col items-center gap-3"
+      initial={{ scale: 0.85, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.7, ease: 'easeOut' }}
+      className="flex flex-col items-center gap-3"
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <defs>
-          <clipPath id="moon-clip">
-            <circle cx={size / 2} cy={size / 2} r={size / 2 - 2} />
+          <clipPath id={`mc-${size}`}>
+            <circle cx={size / 2} cy={size / 2} r={r} />
           </clipPath>
-          <radialGradient id="moon-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={illumination > 20 ? '#e8e8c0' : '#1a1a3e'} />
-            <stop offset="100%" stopColor={illumination > 20 ? '#b0b090' : '#0d0d20'} />
+          <radialGradient id={`mg-${size}`} cx="40%" cy="35%" r="65%">
+            <stop offset="0%" stopColor={illumination > 5 ? '#d4cfa8' : '#1a1f36'} />
+            <stop offset="100%" stopColor={illumination > 5 ? '#9e9870' : '#0d1020'} />
           </radialGradient>
-          {/* Glow filter */}
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+          <filter id="moonGlow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
 
-        {/* Outer glow ring */}
-        {illumination > 30 && (
-          <circle
-            cx={size / 2} cy={size / 2} r={size / 2 + 4}
-            fill="none"
-            stroke="rgba(232, 232, 192, 0.15)"
-            strokeWidth="8"
-            filter="url(#glow)"
-          />
+        {/* Glow when bright */}
+        {illumination > 25 && (
+          <circle cx={size/2} cy={size/2} r={r + 6} fill="none"
+            stroke="rgba(220,210,160,0.12)" strokeWidth={12} filter="url(#moonGlow)" />
         )}
 
         {/* Moon base */}
-        <circle
-          cx={size / 2} cy={size / 2} r={size / 2 - 2}
-          fill="url(#moon-glow)"
-        />
+        <circle cx={size/2} cy={size/2} r={r} fill={`url(#mg-${size})`} />
 
-        {/* Shadow overlay to create phase */}
-        <g clipPath="url(#moon-clip)">
+        {/* Phase shadow */}
+        <g clipPath={`url(#mc-${size})`}>
           {/* Dark half */}
           <rect
-            x={shadowFlip === 1 ? size / 2 : 0}
-            y={0}
-            width={size / 2}
-            height={size}
-            fill="#0a0f1e"
+            x={litSide === 1 ? 0 : size / 2}
+            y={0} width={size / 2} height={size}
+            fill="#050a18"
           />
-          {/* Shadow ellipse */}
+          {/* Ellipse transitions between full dark and full lit */}
           <ellipse
-            cx={size / 2}
-            cy={size / 2}
-            rx={shadowRx}
-            ry={size / 2 - 2}
-            fill={shadowFill}
+            cx={size / 2} cy={size / 2}
+            rx={rx} ry={r}
+            fill={isWaxing ? '#d4cfa8' : '#050a18'}
           />
         </g>
 
-        {/* Craters (visible when illuminated) */}
-        {illumination > 10 && (
-          <>
-            <circle cx={size * 0.55} cy={size * 0.35} r={size * 0.04} fill="rgba(0,0,0,0.12)" clipPath="url(#moon-clip)" />
-            <circle cx={size * 0.38} cy={size * 0.55} r={size * 0.06} fill="rgba(0,0,0,0.10)" clipPath="url(#moon-clip)" />
-            <circle cx={size * 0.62} cy={size * 0.65} r={size * 0.03} fill="rgba(0,0,0,0.08)" clipPath="url(#moon-clip)" />
-            <circle cx={size * 0.42} cy={size * 0.32} r={size * 0.02} fill="rgba(0,0,0,0.09)" clipPath="url(#moon-clip)" />
-          </>
+        {/* Craters on lit portion */}
+        {illumination > 8 && (
+          <g clipPath={`url(#mc-${size})`} opacity="0.35">
+            <circle cx={size * 0.55} cy={size * 0.36} r={size * 0.045} fill="#0a0f1e" />
+            <circle cx={size * 0.39} cy={size * 0.56} r={size * 0.058} fill="#0a0f1e" />
+            <circle cx={size * 0.62} cy={size * 0.64} r={size * 0.032} fill="#0a0f1e" />
+            <circle cx={size * 0.44} cy={size * 0.30} r={size * 0.025} fill="#0a0f1e" />
+          </g>
         )}
       </svg>
 
       <div className="text-center">
-        <div className="text-sm font-bold text-light-text">{phaseName}</div>
-        <div className="text-xs text-muted-text">{illumination}% illuminated</div>
+        <p className="text-sm font-semibold text-slate-200">{phaseName}</p>
+        <p className="text-xs text-slate-500">{illumination}% illuminated</p>
       </div>
     </motion.div>
   );
