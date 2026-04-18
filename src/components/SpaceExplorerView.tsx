@@ -735,30 +735,6 @@ function CockpitHUD({ speed, lockedPlanet, flying }: { speed: number; lockedPlan
         </div>
       </div>
 
-      {/* Crosshair */}
-      <div style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)' }}>
-        <svg width="72" height="72" viewBox="0 0 72 72">
-          {/* Outer lock ring (only when target) */}
-          {lockedPlanet && (
-            <circle cx="36" cy="36" r="26" fill="none" stroke="rgba(100,255,150,0.45)" strokeWidth="0.6" strokeDasharray="3 2">
-              <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="6s" repeatCount="indefinite"/>
-            </circle>
-          )}
-          <circle cx="36" cy="36" r="14" fill="none" stroke={lockedPlanet ? 'rgba(100,255,150,0.55)' : 'rgba(100,200,255,0.4)'} strokeWidth="0.8"/>
-          <circle cx="36" cy="36" r="2.5" fill={lockedPlanet ? 'rgba(100,255,150,0.95)' : 'rgba(100,200,255,0.7)'}/>
-          {[[36,8,36,16],[36,56,36,64],[8,36,16,36],[56,36,64,36]].map(([x1,y1,x2,y2],i) => (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={lockedPlanet ? 'rgba(100,255,150,0.7)' : 'rgba(100,200,255,0.55)'} strokeWidth="1"/>
-          ))}
-          {/* Bracket corners */}
-          {lockedPlanet && [[16,16],[56,16],[16,56],[56,56]].map(([cx,cy],i) => {
-            const dx = cx < 36 ? 1 : -1, dy = cy < 36 ? 1 : -1;
-            return (
-              <path key={i} d={`M ${cx} ${cy+6*dy} L ${cx} ${cy} L ${cx+6*dx} ${cy}`} fill="none" stroke="rgba(100,255,150,0.8)" strokeWidth="1.2"/>
-            );
-          })}
-        </svg>
-      </div>
-
       {/* ── Radar scope — mid-right above dashboard ── */}
       <div style={{ position:'absolute', bottom:'31%', right:'9%', width:90, height:90, pointerEvents:'none' }}>
         <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'2px solid rgba(100,255,150,0.35)', background:'radial-gradient(circle, rgba(10,30,20,0.8), rgba(5,15,10,0.95))', overflow:'hidden', boxShadow:'inset 0 0 15px rgba(0,40,20,0.6), 0 0 8px rgba(60,200,100,0.15)' }}>
@@ -971,6 +947,34 @@ export default function SpaceExplorerView() {
   const flyTargetRef = useRef<THREE.Vector3|null>(null);
   const flyPlanetRef = useRef<string|null>(null);
 
+  // Custom cursor — hitmarker follows mouse
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const crosshairRef = useRef<HTMLDivElement>(null);
+  const rawPos = useRef({ x: 0.5, y: 0.38 });
+  const smoothPos = useRef({ x: 0.5, y: 0.38 });
+  const [cursorInside, setCursorInside] = useState(false);
+
+  useEffect(() => {
+    let rafId: number;
+    const animate = () => {
+      smoothPos.current.x += (rawPos.current.x - smoothPos.current.x) * 0.2;
+      smoothPos.current.y += (rawPos.current.y - smoothPos.current.y) * 0.2;
+      if (crosshairRef.current) {
+        crosshairRef.current.style.left = `${smoothPos.current.x * 100}%`;
+        crosshairRef.current.style.top = `${smoothPos.current.y * 100}%`;
+      }
+      rafId = requestAnimationFrame(animate);
+    };
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = wrapperRef.current!.getBoundingClientRect();
+    rawPos.current.x = (e.clientX - rect.left) / rect.width;
+    rawPos.current.y = (e.clientY - rect.top) / rect.height;
+  };
+
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if(e.key==='w'||e.key==='W') keysRef.current.w=true;
@@ -1011,7 +1015,35 @@ export default function SpaceExplorerView() {
   }
 
   return (
-    <div style={{ width:'100%', height:'100vh', position:'relative', background:'#020810' }}>
+    <div
+      ref={wrapperRef}
+      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', cursor: cursorInside ? 'none' : 'default' }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setCursorInside(true)}
+      onMouseLeave={() => setCursorInside(false)}
+    >
+      {/* Floating hitmarker — follows mouse */}
+      <div ref={crosshairRef} style={{ position:'absolute', left:'50%', top:'38%', transform:'translate(-50%,-50%)', pointerEvents:'none', zIndex:30 }}>
+        <svg width="72" height="72" viewBox="0 0 72 72">
+          {selected && (
+            <circle cx="36" cy="36" r="26" fill="none" stroke="rgba(100,255,150,0.45)" strokeWidth="0.6" strokeDasharray="3 2">
+              <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="6s" repeatCount="indefinite"/>
+            </circle>
+          )}
+          <circle cx="36" cy="36" r="14" fill="none" stroke={selected ? 'rgba(100,255,150,0.55)' : 'rgba(100,200,255,0.4)'} strokeWidth="0.8"/>
+          <circle cx="36" cy="36" r="2.5" fill={selected ? 'rgba(100,255,150,0.95)' : 'rgba(100,200,255,0.7)'}/>
+          {([[36,8,36,16],[36,56,36,64],[8,36,16,36],[56,36,64,36]] as number[][]).map(([x1,y1,x2,y2],i) => (
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={selected ? 'rgba(100,255,150,0.7)' : 'rgba(100,200,255,0.55)'} strokeWidth="1"/>
+          ))}
+          {selected && ([[16,16],[56,16],[16,56],[56,56]] as number[][]).map(([cx,cy],i) => {
+            const dx = cx < 36 ? 1 : -1, dy = cy < 36 ? 1 : -1;
+            return (
+              <path key={i} d={`M ${cx} ${cy+6*dy} L ${cx} ${cy} L ${cx+6*dx} ${cy}`} fill="none" stroke="rgba(100,255,150,0.8)" strokeWidth="1.2"/>
+            );
+          })}
+        </svg>
+      </div>
+
       <Canvas style={{ position:'absolute', inset:0 }}>
         <ambientLight intensity={0.2}/>
         <pointLight position={[0,0,0]} intensity={6} color="#ffe8a0" decay={0.4}/>
