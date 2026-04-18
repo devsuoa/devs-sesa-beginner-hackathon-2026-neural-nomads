@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import * as Astronomy from 'astronomy-engine';
 import { getMoonPhase, calculateDayScore, type DayScore } from '../utils/astronomy';
 import type { DailyWeatherData } from '../hooks/useWeather';
 import MoonVisual from './MoonVisual';
@@ -7,9 +8,34 @@ import MoonVisual from './MoonVisual';
 interface Props {
   weatherDays: DailyWeatherData[];
   userLat: number;
+  userLon: number;
   city: string;
   onSelectTonight: () => void;
   weatherLoading: boolean;
+}
+
+function getSunsetSunrise(date: Date, lat: number, lon: number): { sunset: Date; sunrise: Date } {
+  const observer = new Astronomy.Observer(lat, lon, 0);
+  const noon = new Date(date); noon.setHours(12, 0, 0, 0);
+  const sunsetEvt = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, noon, 1);
+  const nextNoon = new Date(noon); nextNoon.setDate(nextNoon.getDate() + 1);
+  const sunriseEvt = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, noon, 1.5);
+  const sunset = sunsetEvt ? sunsetEvt.date : new Date(noon.getTime() + 6 * 3600_000);
+  // Ensure sunrise is after sunset
+  let sunrise = sunriseEvt ? sunriseEvt.date : new Date(nextNoon.getTime() - 6 * 3600_000);
+  if (sunrise <= sunset) {
+    const nextSearch = new Date(sunset.getTime() + 3600_000);
+    const next = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, nextSearch, 1);
+    if (next) sunrise = next.date;
+  }
+  return { sunset, sunrise };
+}
+
+function fmtHour(d: Date): string {
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12; if (h === 0) h = 12;
+  return `${h}${ampm}`;
 }
 
 const LABEL = {
@@ -80,8 +106,8 @@ function DayCard({ scored, index, isBest, isSelected, onClick }: {
   );
 }
 
-function DetailPanel({ scored, weatherDay, onGoTonight }: {
-  scored: DayScore; weatherDay?: DailyWeatherData; onGoTonight: () => void;
+function DetailPanel({ scored, weatherDay, nextWeatherDay, onGoTonight, userLat, userLon }: {
+  scored: DayScore; weatherDay?: DailyWeatherData; nextWeatherDay?: DailyWeatherData; onGoTonight: () => void; userLat: number; userLon: number;
 }) {
   const moon = getMoonPhase(scored.date);
   const { ring } = LABEL[scored.label];
@@ -136,7 +162,7 @@ function DetailPanel({ scored, weatherDay, onGoTonight }: {
 
       {/* Hourly cloud strip */}
       {weatherDay && weatherDay.hourly.length > 0 && (
-        <HourlyStrip hourly={weatherDay.hourly} date={scored.date} />
+        <HourlyStrip hourly={weatherDay.hourly} nextHourly={nextWeatherDay?.hourly ?? []} sunsetISO={weatherDay.sunset} sunriseISO={weatherDay.sunrise} />
       )}
 
       {isTonight && (
@@ -151,49 +177,90 @@ function DetailPanel({ scored, weatherDay, onGoTonight }: {
   );
 }
 
-function HourlyStrip({ hourly, date }: { hourly: any[]; date: Date }) {
-  const evening = hourly.filter(h => {
-    const hd = new Date(h.time);
-    const hDay = hd.getDate();
-    const hHour = hd.getHours();
-    const tDay = date.getDate();
-    const nextDay = new Date(date); nextDay.setDate(date.getDate() + 1);
-    return (hDay === tDay && hHour >= 18) || (hDay === nextDay.getDate() && hHour <= 6);
-  }).slice(0, 13);
+function HourlyStrip({ hourly, nextHourly, sunsetISO, sunriseISO }: { hourly: any[]; nextHourly: any[]; sunsetISO: string; sunriseISO: string }) {
+  // Fixed night window: 5pm of current day through 6am of next day.
+  // Hourly timestamps are city-local ISO strings; filtering by each entry's
+  // local getHours() keeps the window correct regardless of browser tz.
+  const sameDay = hourly.filter(h => {
+    const hr = new Date(h.time).getHours();
+    return hr >= 17;
+  });
+  const earlyMorning = nextHourly.filter(h => {
+    const hr = new Date(h.time).getHours();
+    return hr <= 6;
+  });
+  const night = [...sameDay, ...earlyMorning];
 
-  if (evening.length === 0) return null;
+  if (night.length === 0) return null;
+
+  const sunset = sunsetISO ? new Date(sunsetISO) : null;
+  const sunrise = sunriseISO ? new Date(sunriseISO) : null;
+
+  const fmtTime = (d: Date) => {
+    let h = d.getHours(); const m = d.getMinutes();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12; if (h === 0) h = 12;
+    return m === 0 ? `${h}${ampm}` : `${h}:${String(m).padStart(2,'0')}${ampm}`;
+  };
 
   return (
-    <div>
-      <p className="text-slate-500 text-xs mb-2 uppercase tracking-wider">Cloud cover — evening to dawn</p>
-      <div className="flex items-end gap-0.5 h-12">
-        {evening.map((h, i) => {
-          const hDate = new Date(h.time);
-          const hour = hDate.getHours();
-          const pct = h.cloudCover / 100;
-          const col = h.cloudCover < 25 ? '#22d3ee' : h.cloudCover < 55 ? '#8b5cf6' : h.cloudCover < 80 ? '#f59e0b' : '#ef4444';
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <motion.div
-                initial={{ height: 0 }} animate={{ height: `${Math.max(4, pct * 44)}px` }}
-                transition={{ delay: i * 0.03, duration: 0.5 }}
-                className="w-full rounded-t"
-                style={{ backgroundColor: col, opacity: 0.75 }}
-              />
-              {(hour === 0 || hour === 21 || hour === 3 || hour === 6) && (
-                <span className="text-[8px] text-slate-600">
-                  {hour === 0 ? '12a' : hour === 3 ? '3a' : hour === 6 ? '6a' : '9p'}
+    <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p className="text-white text-xs font-semibold uppercase tracking-wider">Hourly cloud cover</p>
+          <p className="text-slate-500 text-[10px] mt-0.5 leading-snug">Taller bar = more clouds · each bar is one hour</p>
+        </div>
+        <div className="text-right shrink-0">
+          {sunset && (
+            <p className="text-slate-400 text-[10px] leading-tight">
+              <span className="text-slate-500">Sunset</span> {fmtTime(sunset)}
+            </p>
+          )}
+          {sunrise && (
+            <p className="text-slate-400 text-[10px] leading-tight">
+              <span className="text-slate-500">Sunrise</span> {fmtTime(sunrise)}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="overflow-x-auto -mx-1 px-1 pb-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.15)_transparent]">
+        <div className="flex items-stretch gap-2 h-24 min-w-max">
+          {night.map((h, i) => {
+            const hDate = new Date(h.time);
+            const pct = h.cloudCover / 100;
+            const col = h.cloudCover < 25 ? '#22d3ee' : h.cloudCover < 55 ? '#8b5cf6' : h.cloudCover < 80 ? '#f59e0b' : '#ef4444';
+            return (
+              <div key={i} className="flex flex-col items-center group w-10 shrink-0" title={`${fmtHour(hDate)} — ${h.cloudCover}% cloud cover`}>
+                <div className="relative w-full flex-1 flex items-end mb-1.5 rounded-md bg-white/[0.03] overflow-hidden">
+                  <motion.div
+                    initial={{ height: 0 }} animate={{ height: `${Math.max(6, pct * 100)}%` }}
+                    transition={{ delay: i * 0.02, duration: 0.4, ease: 'easeOut' }}
+                    className="w-full rounded-md transition-all group-hover:brightness-125"
+                    style={{
+                      background: `linear-gradient(to top, ${col}, ${col}cc)`,
+                      boxShadow: `0 0 12px ${col}40`,
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 whitespace-nowrap group-hover:text-white transition-colors">
+                  {fmtHour(hDate)}
                 </span>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-white/5 text-[10px] text-slate-400 flex-wrap">
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background:'#22d3ee', boxShadow:'0 0 6px #22d3ee80' }} />Clear</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background:'#8b5cf6', boxShadow:'0 0 6px #8b5cf680' }} />Partly</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background:'#f59e0b', boxShadow:'0 0 6px #f59e0b80' }} />Cloudy</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background:'#ef4444', boxShadow:'0 0 6px #ef444480' }} />Overcast</span>
       </div>
     </div>
   );
 }
 
-export default function WeekPlanner({ weatherDays, userLat: _u, city, onSelectTonight, weatherLoading }: Props) {
+export default function WeekPlanner({ weatherDays, userLat, userLon, city, onSelectTonight, weatherLoading }: Props) {
   const [selected, setSelected] = useState(0);
 
   const scored = useMemo<DayScore[]>(() => {
@@ -377,7 +444,10 @@ export default function WeekPlanner({ weatherDays, userLat: _u, city, onSelectTo
                 key={scored[selected]?.date.toISOString()}
                 scored={scored[selected]}
                 weatherDay={weatherDays[selected]}
+                nextWeatherDay={weatherDays[selected + 1]}
                 onGoTonight={onSelectTonight}
+                userLat={userLat}
+                userLon={userLon}
               />
             </AnimatePresence>
           </div>

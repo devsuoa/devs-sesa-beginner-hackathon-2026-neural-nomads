@@ -18,6 +18,8 @@ export interface DailyWeatherData {
   windSpeed: number;
   visibility: number;
   hourly: HourlyWeather[];
+  sunset: string; // city-local ISO (no tz suffix)
+  sunrise: string; // next day's sunrise, city-local ISO
 }
 
 export interface WeatherState {
@@ -45,7 +47,7 @@ export function useWeather(lat: number, lon: number) {
         url.searchParams.set('longitude', lon.toFixed(4));
         url.searchParams.set('current', 'temperature_2m');
         url.searchParams.set('hourly', 'cloud_cover,temperature_2m,wind_speed_10m,precipitation,visibility');
-        url.searchParams.set('daily', 'cloud_cover_mean,temperature_2m_max,precipitation_sum,wind_speed_10m_max');
+        url.searchParams.set('daily', 'cloud_cover_mean,temperature_2m_max,precipitation_sum,wind_speed_10m_max,sunrise,sunset');
         url.searchParams.set('forecast_days', '7');
         url.searchParams.set('timezone', 'auto');
         url.searchParams.set('wind_speed_unit', 'kmh');
@@ -110,6 +112,8 @@ export function useWeather(lat: number, lon: number) {
             windSpeed: data.daily.wind_speed_10m_max[i] ?? 10,
             visibility: 20,
             hourly,
+            sunset: data.daily.sunset?.[i] ?? '',
+            sunrise: data.daily.sunrise?.[i + 1] ?? data.daily.sunrise?.[i] ?? '',
           });
         }
 

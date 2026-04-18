@@ -77,6 +77,7 @@ export default function App() {
                 <WeekPlanner
                   weatherDays={weather.days}
                   userLat={activeLocation.lat}
+                  userLon={activeLocation.lon}
                   city={activeLocation.city}
                   onSelectTonight={() => setView('tonight')}
                   weatherLoading={weather.loading}
