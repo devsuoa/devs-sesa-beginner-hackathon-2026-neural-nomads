@@ -762,33 +762,6 @@ function CockpitHUD({ speed, lockedPlanet, flying }: { speed: number; lockedPlan
         </svg>
       </div>
 
-      {/* ── Attitude Indicator (artificial horizon) — mid-left above dashboard ── */}
-      <div style={{ position:'absolute', bottom:'31%', left:'9%', width:90, height:90, pointerEvents:'none' }}>
-        <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'2px solid rgba(100,160,255,0.35)', overflow:'hidden', background:'#050a18', boxShadow:'inset 0 0 15px rgba(0,0,0,0.8), 0 0 8px rgba(60,100,200,0.2)' }}>
-            <div style={{ position:'absolute', inset:0, transform:`rotate(${roll}deg)` }}>
-              {/* sky */}
-              <div style={{ position:'absolute', left:0, right:0, top:0, height:`${50 - pitch * 2}%`, background:'linear-gradient(to bottom, #1a3a70, #2a5090)' }}/>
-              {/* ground */}
-              <div style={{ position:'absolute', left:0, right:0, bottom:0, height:`${50 + pitch * 2}%`, background:'linear-gradient(to bottom, #5a3a1a, #3a2010)' }}/>
-              {/* horizon line */}
-              <div style={{ position:'absolute', left:0, right:0, top:`${50 - pitch * 2}%`, height:1, background:'rgba(255,255,255,0.9)' }}/>
-              {/* pitch ladder */}
-              {[-20,-10,10,20].map(p => (
-                <div key={p} style={{ position:'absolute', left:'30%', right:'30%', top:`${50 - pitch * 2 - p * 2}%`, height:1, background:'rgba(255,255,255,0.5)' }}>
-                  <span style={{ position:'absolute', left:-12, top:-5, fontSize:7, color:'rgba(255,255,255,0.6)', fontFamily:'monospace' }}>{Math.abs(p)}</span>
-                </div>
-              ))}
-            </div>
-            {/* static aircraft symbol */}
-            <svg style={{ position:'absolute', inset:0 }} viewBox="0 0 90 90">
-              <line x1="20" y1="45" x2="35" y2="45" stroke="rgba(255,220,100,0.95)" strokeWidth="2"/>
-              <line x1="55" y1="45" x2="70" y2="45" stroke="rgba(255,220,100,0.95)" strokeWidth="2"/>
-              <circle cx="45" cy="45" r="2" fill="rgba(255,220,100,0.95)"/>
-            </svg>
-        </div>
-        <div style={{ position:'absolute', top:-14, left:0, right:0, textAlign:'center', fontSize:8, color:'rgba(100,180,255,0.55)', fontFamily:'monospace', letterSpacing:'0.1em' }}>ATTITUDE</div>
-      </div>
-
       {/* ── Radar scope — mid-right above dashboard ── */}
       <div style={{ position:'absolute', bottom:'31%', right:'9%', width:90, height:90, pointerEvents:'none' }}>
         <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'2px solid rgba(100,255,150,0.35)', background:'radial-gradient(circle, rgba(10,30,20,0.8), rgba(5,15,10,0.95))', overflow:'hidden', boxShadow:'inset 0 0 15px rgba(0,40,20,0.6), 0 0 8px rgba(60,200,100,0.15)' }}>

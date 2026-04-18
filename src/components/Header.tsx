@@ -43,7 +43,7 @@ export default function Header({ view, onViewChange, city, country: _country, on
                 : 'text-muted-text hover:text-light-text'
             }`}
           >
-            <span className="hidden sm:inline">📅 </span>Best Night
+            Best Night
           </button>
           <button
             onClick={() => onViewChange('tonight')}
@@ -53,7 +53,7 @@ export default function Header({ view, onViewChange, city, country: _country, on
                 : 'text-muted-text hover:text-light-text'
             }`}
           >
-            <span className="hidden sm:inline">🌙 </span>Tonight's Sky
+            Tonight's Sky
           </button>
           <button
             onClick={() => onViewChange('skymap')}
@@ -63,7 +63,7 @@ export default function Header({ view, onViewChange, city, country: _country, on
                 : 'text-muted-text hover:text-light-text'
             }`}
           >
-            <span className="hidden sm:inline">🚀 </span>Sky Map
+            Sky Map
           </button>
           <button
             onClick={() => onViewChange('explorer')}
@@ -73,7 +73,7 @@ export default function Header({ view, onViewChange, city, country: _country, on
                 : 'text-muted-text hover:text-light-text'
             }`}
           >
-            <span className="hidden sm:inline">🧑‍🚀 </span>Explorer
+            Explorer
           </button>
         </div>
         </div>
