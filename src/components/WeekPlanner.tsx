@@ -232,7 +232,7 @@ export default function WeekPlanner({ weatherDays, userLat: _u, city, onSelectTo
         {/* Dark tint for legibility */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60" />
         {/* Blend into the page background at the bottom */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#080d1a]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-80 bg-gradient-to-b from-transparent via-[#080d1a]/80 to-[#080d1a]" />
 
         <div className="relative text-center px-6 py-24 sm:py-32 max-w-5xl mx-auto">
           <div className="pill pill-primary mb-6 mx-auto">
