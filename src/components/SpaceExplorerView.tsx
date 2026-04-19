@@ -1025,7 +1025,7 @@ export default function SpaceExplorerView() {
   return (
     <div
       ref={wrapperRef}
-      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', overflow:'hidden', cursor: (!showHint && (cursorInside || isFullscreen)) ? 'none' : 'default' }}
+      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', overflow:'hidden', cursor: pointerLocked ? 'none' : 'default' }}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => { setCursorInside(true); mouseInsideRef.current = true; }}
       onMouseLeave={() => { if (!pointerLocked) { setCursorInside(false); mouseInsideRef.current = false; } }}
@@ -1053,7 +1053,7 @@ export default function SpaceExplorerView() {
       </div>
 
       {/* Controls hint popup — centre of screen */}
-      <div style={{
+      <div onMouseDown={e => e.stopPropagation()} style={{
         position:'absolute', top:'50%', left:'50%', transform:`translate(-50%, calc(-50% + ${showHint ? 0 : 30}px))`,
         opacity: showHint ? 1 : 0, transition:'opacity 0.6s ease, transform 0.6s ease',
         pointerEvents: showHint ? 'auto' : 'none', zIndex:9999,
@@ -1123,7 +1123,7 @@ export default function SpaceExplorerView() {
       <CockpitHUD speed={speed} lockedPlanet={selected} flying={flying}/>
 
       {/* Destinations nav — "JUMP CONSOLE" horizontal row at top of canvas, clear of the right-side radar/HUD */}
-      <div style={{ position:'absolute', top:88, right:12, zIndex:60, display:'flex', flexDirection:'column', gap:2, pointerEvents:'auto', padding:'6px 8px 8px', background:'linear-gradient(to bottom, rgba(12,20,42,0.85), rgba(8,14,32,0.9))', border:'1px solid rgba(80,130,220,0.35)', borderRadius:8, boxShadow:'inset 0 1px 0 rgba(120,180,255,0.15), 0 0 10px rgba(0,0,0,0.5)' }}>
+      <div onMouseDown={e => e.stopPropagation()} style={{ position:'absolute', top:88, right:12, zIndex:60, display:'flex', flexDirection:'column', gap:2, pointerEvents:'auto', padding:'6px 8px 8px', background:'linear-gradient(to bottom, rgba(12,20,42,0.85), rgba(8,14,32,0.9))', border:'1px solid rgba(80,130,220,0.35)', borderRadius:8, boxShadow:'inset 0 1px 0 rgba(120,180,255,0.15), 0 0 10px rgba(0,0,0,0.5)' }}>
         <div style={{ color:'rgba(100,180,255,0.75)', fontSize:9, fontFamily:'monospace', letterSpacing:'0.2em', marginBottom:4, textAlign:'left', display:'flex', alignItems:'center', gap:6 }}>
           <div style={{ width:5, height:5, borderRadius:'50%', background:'rgba(100,255,150,0.9)', boxShadow:'0 0 4px rgba(100,255,150,0.7)', animation:'hud-blink 1.6s infinite' }}/>
           JUMP CONSOLE
