@@ -512,6 +512,7 @@ function FirstPersonController({
 }) {
   const { camera } = useThree();
   const euler = useRef(new THREE.Euler(0,0,0,'YXZ'));
+  const lastMouse = useRef({ x: 0, y: 0 });
   const vel = useRef(new THREE.Vector3());
   const arrivedRef = useRef(onArrived);
   const speedRef = useRef(onSpeedChange);
@@ -529,9 +530,22 @@ function FirstPersonController({
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (!mouseInsideRef.current && !document.pointerLockElement) return;
-      euler.current.y -= e.movementX * 0.003;
-      euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x - e.movementY * 0.003));
+      let dx: number, dy: number;
+      if (document.pointerLockElement) {
+        // Pointer lock: movementX/Y is reliable and unbounded
+        dx = e.movementX;
+        dy = e.movementY;
+      } else if (mouseInsideRef.current) {
+        // Free-look: use clientX/Y delta — reliable without pointer lock
+        dx = e.clientX - lastMouse.current.x;
+        dy = e.clientY - lastMouse.current.y;
+      } else {
+        lastMouse.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+      lastMouse.current = { x: e.clientX, y: e.clientY };
+      euler.current.y -= dx * 0.003;
+      euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x - dy * 0.003));
       camera.quaternion.setFromEuler(euler.current);
     };
     window.addEventListener('mousemove', onMove);
@@ -962,10 +976,10 @@ export default function SpaceExplorerView() {
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if(e.key==='w'||e.key==='W') keysRef.current.w=true;
-      if(e.key==='a'||e.key==='A') keysRef.current.a=true;
-      if(e.key==='s'||e.key==='S') keysRef.current.s=true;
-      if(e.key==='d'||e.key==='D') keysRef.current.d=true;
+      if(e.key==='w'||e.key==='W') { e.preventDefault(); keysRef.current.w=true; }
+      if(e.key==='a'||e.key==='A') { e.preventDefault(); keysRef.current.a=true; }
+      if(e.key==='s'||e.key==='S') { e.preventDefault(); keysRef.current.s=true; }
+      if(e.key==='d'||e.key==='D') { e.preventDefault(); keysRef.current.d=true; }
       if(e.key===' ') { e.preventDefault(); keysRef.current.space=true; }
       if(e.key==='Shift') keysRef.current.shift=true;
       if(e.key==='c'||e.key==='C') keysRef.current.c=true;
