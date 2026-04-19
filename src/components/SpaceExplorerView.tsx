@@ -530,16 +530,22 @@ function FirstPersonController({
   }, [camera]);
 
   useEffect(() => {
+    const isDragging = { value: false };
+    const onDown = (e: MouseEvent) => { isDragging.value = true; lastMouse.current = { x: e.clientX, y: e.clientY }; };
+    const onUp = () => { isDragging.value = false; };
     const onMove = (e: MouseEvent) => {
-      if (!mouseInsideRef.current) { lastMouse.current = {x:e.clientX, y:e.clientY}; return; }
+      const active = mouseInsideRef.current || isDragging.value;
+      if (!active) { lastMouse.current = {x:e.clientX, y:e.clientY}; return; }
       const dx=e.clientX-lastMouse.current.x, dy=e.clientY-lastMouse.current.y;
       lastMouse.current={x:e.clientX,y:e.clientY};
       euler.current.y -= dx*0.003;
       euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x-dy*0.003));
       camera.quaternion.setFromEuler(euler.current);
     };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('mouseup', onUp);
     window.addEventListener('mousemove',onMove);
-    return ()=>{ window.removeEventListener('mousemove',onMove); };
+    return ()=>{ window.removeEventListener('mousedown',onDown); window.removeEventListener('mouseup',onUp); window.removeEventListener('mousemove',onMove); };
   }, [camera, mouseInsideRef]);
 
   const fwd = useRef(new THREE.Vector3());
