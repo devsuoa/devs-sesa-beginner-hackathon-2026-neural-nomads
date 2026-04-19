@@ -1025,7 +1025,7 @@ export default function SpaceExplorerView() {
   return (
     <div
       ref={wrapperRef}
-      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', overflow:'hidden', cursor: (cursorInside || isFullscreen) ? 'none' : 'default' }}
+      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', overflow:'hidden', cursor: (!showHint && (cursorInside || isFullscreen)) ? 'none' : 'default' }}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => { setCursorInside(true); mouseInsideRef.current = true; }}
       onMouseLeave={() => { if (!pointerLocked) { setCursorInside(false); mouseInsideRef.current = false; } }}
