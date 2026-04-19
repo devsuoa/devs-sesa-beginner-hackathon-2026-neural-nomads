@@ -962,10 +962,6 @@ export default function SpaceExplorerView() {
   const [showHint, setShowHint] = useState(true);
   const mouseInsideRef = useRef(false);
 
-  useEffect(() => {
-    const t = setTimeout(() => setShowHint(false), 4500);
-    return () => clearTimeout(t);
-  }, []);
 
   useEffect(() => {
     const onChange = () => {
@@ -1060,7 +1056,7 @@ export default function SpaceExplorerView() {
       <div style={{
         position:'absolute', top:'50%', left:'50%', transform:`translate(-50%, calc(-50% + ${showHint ? 0 : 30}px))`,
         opacity: showHint ? 1 : 0, transition:'opacity 0.6s ease, transform 0.6s ease',
-        pointerEvents: showHint ? 'auto' : 'none', zIndex:40,
+        pointerEvents: showHint ? 'auto' : 'none', zIndex:9999,
         background:'rgba(6,12,28,0.88)', border:'1px solid rgba(100,160,255,0.3)',
         borderRadius:16, padding:'28px 36px 24px', backdropFilter:'blur(16px)',
         boxShadow:'0 8px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(100,160,255,0.1)',
