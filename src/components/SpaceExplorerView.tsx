@@ -1065,7 +1065,7 @@ export default function SpaceExplorerView() {
         {/* Header + X */}
         <div style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ color:'rgba(180,210,255,0.55)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.22em', textTransform:'uppercase' }}>Controls</div>
-          <button onMouseDown={e => e.stopPropagation()} onClick={() => setShowHint(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(140,170,220,0.6)', fontSize:16, lineHeight:1, padding:'0 2px' }}>✕</button>
+          <button onMouseDown={e => e.stopPropagation()} onClick={() => { setShowHint(false); wrapperRef.current?.requestPointerLock(); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(140,170,220,0.6)', fontSize:16, lineHeight:1, padding:'0 2px' }}>✕</button>
         </div>
         {/* Keys */}
         <div style={{ display:'flex', gap:20, alignItems:'center' }}>
