@@ -1090,8 +1090,8 @@ export default function SpaceExplorerView() {
         </div>
       </div>
 
-      {/* Persistent small hint at bottom */}
-      <div style={{ position:'absolute', bottom:16, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:30, color:'rgba(140,180,255,0.4)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.15em', whiteSpace:'nowrap' }}>
+      {/* Persistent small hint — inside cockpit viewport, above dashboard */}
+      <div style={{ position:'absolute', bottom:'31%', left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:25, color:'rgba(140,180,255,0.4)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.15em', whiteSpace:'nowrap' }}>
         CLICK TO ENTER FREE-LOOK · ESC TO RELEASE
       </div>
 
