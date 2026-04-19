@@ -500,6 +500,7 @@ function FirstPersonController({
   onArrived,
   onSpeedChange,
   onLookAt,
+  mouseInsideRef,
 }: {
   keysRef: React.RefObject<{ w:boolean;a:boolean;s:boolean;d:boolean;space:boolean;shift:boolean;c:boolean }>;
   flyTarget: React.RefObject<THREE.Vector3|null>;
@@ -507,11 +508,10 @@ function FirstPersonController({
   onArrived: () => void;
   onSpeedChange: (s: number) => void;
   onLookAt: (planet: string | null) => void;
+  mouseInsideRef: React.RefObject<boolean>;
 }) {
   const { camera } = useThree();
   const euler = useRef(new THREE.Euler(0,0,0,'YXZ'));
-  const isDragging = useRef(false);
-  const lastMouse = useRef({x:0,y:0});
   const vel = useRef(new THREE.Vector3());
   const arrivedRef = useRef(onArrived);
   const speedRef = useRef(onSpeedChange);
@@ -522,28 +522,21 @@ function FirstPersonController({
   lookAtRef.current = onLookAt;
 
   useEffect(() => {
-    // Start near Earth
     camera.position.set(13, 2, 4);
     camera.lookAt(0, 0, 0);
     euler.current.setFromQuaternion(camera.quaternion, 'YXZ');
   }, [camera]);
 
   useEffect(() => {
-    const onDown = (e: MouseEvent) => { isDragging.current=true; lastMouse.current={x:e.clientX,y:e.clientY}; };
-    const onUp = () => { isDragging.current=false; };
     const onMove = (e: MouseEvent) => {
-      if (!isDragging.current) return;
-      const dx=e.clientX-lastMouse.current.x, dy=e.clientY-lastMouse.current.y;
-      lastMouse.current={x:e.clientX,y:e.clientY};
-      euler.current.y -= dx*0.003;
-      euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x-dy*0.003));
+      if (!mouseInsideRef.current && !document.pointerLockElement) return;
+      euler.current.y -= e.movementX * 0.003;
+      euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x - e.movementY * 0.003));
       camera.quaternion.setFromEuler(euler.current);
     };
-    window.addEventListener('mousedown',onDown);
-    window.addEventListener('mouseup',onUp);
-    window.addEventListener('mousemove',onMove);
-    return ()=>{window.removeEventListener('mousedown',onDown);window.removeEventListener('mouseup',onUp);window.removeEventListener('mousemove',onMove);};
-  }, [camera]);
+    window.addEventListener('mousemove', onMove);
+    return () => { window.removeEventListener('mousemove', onMove); };
+  }, [camera, mouseInsideRef]);
 
   const fwd = useRef(new THREE.Vector3());
   const right = useRef(new THREE.Vector3());
@@ -733,30 +726,6 @@ function CockpitHUD({ speed, lockedPlanet, flying }: { speed: number; lockedPlan
           <div style={{ position:'absolute', left:'50%', top:0, bottom:0, width:1, background:'rgba(255,220,100,0.9)', transform:'translateX(-0.5px)' }}/>
           <div style={{ position:'absolute', left:'50%', top:-3, transform:'translateX(-50%)', width:0, height:0, borderLeft:'3px solid transparent', borderRight:'3px solid transparent', borderTop:'4px solid rgba(255,220,100,0.9)' }}/>
         </div>
-      </div>
-
-      {/* Crosshair */}
-      <div style={{ position:'absolute', top:'38%', left:'50%', transform:'translate(-50%,-50%)' }}>
-        <svg width="72" height="72" viewBox="0 0 72 72">
-          {/* Outer lock ring (only when target) */}
-          {lockedPlanet && (
-            <circle cx="36" cy="36" r="26" fill="none" stroke="rgba(100,255,150,0.45)" strokeWidth="0.6" strokeDasharray="3 2">
-              <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="6s" repeatCount="indefinite"/>
-            </circle>
-          )}
-          <circle cx="36" cy="36" r="14" fill="none" stroke={lockedPlanet ? 'rgba(100,255,150,0.55)' : 'rgba(100,200,255,0.4)'} strokeWidth="0.8"/>
-          <circle cx="36" cy="36" r="2.5" fill={lockedPlanet ? 'rgba(100,255,150,0.95)' : 'rgba(100,200,255,0.7)'}/>
-          {[[36,8,36,16],[36,56,36,64],[8,36,16,36],[56,36,64,36]].map(([x1,y1,x2,y2],i) => (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={lockedPlanet ? 'rgba(100,255,150,0.7)' : 'rgba(100,200,255,0.55)'} strokeWidth="1"/>
-          ))}
-          {/* Bracket corners */}
-          {lockedPlanet && [[16,16],[56,16],[16,56],[56,56]].map(([cx,cy],i) => {
-            const dx = cx < 36 ? 1 : -1, dy = cy < 36 ? 1 : -1;
-            return (
-              <path key={i} d={`M ${cx} ${cy+6*dy} L ${cx} ${cy} L ${cx+6*dx} ${cy}`} fill="none" stroke="rgba(100,255,150,0.8)" strokeWidth="1.2"/>
-            );
-          })}
-        </svg>
       </div>
 
       {/* ── Radar scope — mid-right above dashboard ── */}
@@ -971,6 +940,26 @@ export default function SpaceExplorerView() {
   const flyTargetRef = useRef<THREE.Vector3|null>(null);
   const flyPlanetRef = useRef<string|null>(null);
 
+  // Custom cursor + pointer lock
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [cursorInside, setCursorInside] = useState(false);
+  const [pointerLocked, setPointerLocked] = useState(false);
+  const mouseInsideRef = useRef(false);
+
+  useEffect(() => {
+    const onChange = () => {
+      const locked = !!document.pointerLockElement;
+      setPointerLocked(locked);
+      if (locked) mouseInsideRef.current = true;
+    };
+    document.addEventListener('pointerlockchange', onChange);
+    return () => document.removeEventListener('pointerlockchange', onChange);
+  }, []);
+
+  const handleMouseDown = () => {
+    if (!pointerLocked) wrapperRef.current?.requestPointerLock();
+  };
+
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if(e.key==='w'||e.key==='W') keysRef.current.w=true;
@@ -1011,7 +1000,42 @@ export default function SpaceExplorerView() {
   }
 
   return (
-    <div style={{ width:'100%', height:'100vh', position:'relative', background:'#020810' }}>
+    <div
+      ref={wrapperRef}
+      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', cursor: cursorInside ? 'none' : 'default' }}
+      onMouseDown={handleMouseDown}
+      onMouseEnter={() => { setCursorInside(true); mouseInsideRef.current = true; }}
+      onMouseLeave={() => { if (!pointerLocked) { setCursorInside(false); mouseInsideRef.current = false; } }}
+    >
+      {/* Hitmarker — fixed centre of space viewport */}
+      <div style={{ position:'absolute', left:'50%', top:'38%', transform:'translate(-50%,-50%)', pointerEvents:'none', zIndex:30, filter: selected ? 'drop-shadow(0 0 6px rgba(255,160,0,0.8))' : 'none' }}>
+        <svg width="72" height="72" viewBox="0 0 72 72">
+          {selected && (
+            <circle cx="36" cy="36" r="26" fill="none" stroke="rgba(255,180,0,0.55)" strokeWidth="1" strokeDasharray="3 2">
+              <animateTransform attributeName="transform" type="rotate" from="0 36 36" to="360 36 36" dur="4s" repeatCount="indefinite"/>
+            </circle>
+          )}
+          <circle cx="36" cy="36" r="14" fill="none" stroke={selected ? 'rgba(255,160,0,0.9)' : 'rgba(100,200,255,0.4)'} strokeWidth={selected ? 1.2 : 0.8}/>
+          <circle cx="36" cy="36" r="2.5" fill={selected ? 'rgba(255,200,50,1)' : 'rgba(100,200,255,0.7)'}/>
+          {([[36,8,36,16],[36,56,36,64],[8,36,16,36],[56,36,64,36]] as number[][]).map(([x1,y1,x2,y2],i) => (
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={selected ? 'rgba(255,160,0,0.95)' : 'rgba(100,200,255,0.55)'} strokeWidth={selected ? 1.5 : 1}/>
+          ))}
+          {selected && ([[16,16],[56,16],[16,56],[56,56]] as number[][]).map(([cx,cy],i) => {
+            const dx = cx < 36 ? 1 : -1, dy = cy < 36 ? 1 : -1;
+            return (
+              <path key={i} d={`M ${cx} ${cy+6*dy} L ${cx} ${cy} L ${cx+6*dx} ${cy}`} fill="none" stroke="rgba(255,180,0,0.95)" strokeWidth="1.5"/>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Pointer-lock hint */}
+      {!pointerLocked && (
+        <div style={{ position:'absolute', bottom:'32%', left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:30, color:'rgba(140,180,255,0.5)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.15em', whiteSpace:'nowrap' }}>
+          CLICK TO ENTER FREE-LOOK · ESC TO RELEASE
+        </div>
+      )}
+
       <Canvas style={{ position:'absolute', inset:0 }}>
         <ambientLight intensity={0.2}/>
         <pointLight position={[0,0,0]} intensity={6} color="#ffe8a0" decay={0.4}/>
@@ -1033,6 +1057,7 @@ export default function SpaceExplorerView() {
           onArrived={()=>setFlying(false)}
           onSpeedChange={setSpeed}
           onLookAt={setSelected}
+          mouseInsideRef={mouseInsideRef}
         />
       </Canvas>
 
