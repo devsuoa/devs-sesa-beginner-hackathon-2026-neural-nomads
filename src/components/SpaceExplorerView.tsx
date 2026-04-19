@@ -1056,37 +1056,47 @@ export default function SpaceExplorerView() {
         </svg>
       </div>
 
-      {/* Controls hint popup */}
+      {/* Controls hint popup — centre of screen */}
       <div style={{
-        position:'absolute', bottom:32, left:'50%', transform:`translateX(-50%) translateY(${showHint ? 0 : 20}px)`,
+        position:'absolute', top:'50%', left:'50%', transform:`translate(-50%, calc(-50% + ${showHint ? 0 : 30}px))`,
         opacity: showHint ? 1 : 0, transition:'opacity 0.6s ease, transform 0.6s ease',
-        pointerEvents:'none', zIndex:40,
-        background:'rgba(8,16,36,0.82)', border:'1px solid rgba(100,160,255,0.25)',
-        borderRadius:12, padding:'14px 24px', backdropFilter:'blur(12px)',
-        boxShadow:'0 4px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(100,160,255,0.08)',
-        display:'flex', flexDirection:'column', alignItems:'center', gap:10,
+        pointerEvents: showHint ? 'auto' : 'none', zIndex:40,
+        background:'rgba(6,12,28,0.88)', border:'1px solid rgba(100,160,255,0.3)',
+        borderRadius:16, padding:'28px 36px 24px', backdropFilter:'blur(16px)',
+        boxShadow:'0 8px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(100,160,255,0.1)',
+        display:'flex', flexDirection:'column', alignItems:'center', gap:18, minWidth:320,
       }}>
-        <div style={{ color:'rgba(180,210,255,0.6)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.2em', textTransform:'uppercase' }}>Controls</div>
+        {/* Header + X */}
+        <div style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ color:'rgba(180,210,255,0.55)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.22em', textTransform:'uppercase' }}>Controls</div>
+          <button onClick={() => setShowHint(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(140,170,220,0.6)', fontSize:16, lineHeight:1, padding:'0 2px' }}>✕</button>
+        </div>
+        {/* Keys */}
         <div style={{ display:'flex', gap:20, alignItems:'center' }}>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.3)', borderRadius:6, padding:'4px 14px', color:'rgba(200,220,255,0.9)', fontSize:12, fontFamily:'monospace', fontWeight:'bold' }}>Click</div>
-            <div style={{ color:'rgba(140,170,220,0.7)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Enter free-look</div>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:8, padding:'6px 18px', color:'rgba(200,220,255,0.95)', fontSize:13, fontFamily:'monospace', fontWeight:'bold' }}>Click</div>
+            <div style={{ color:'rgba(140,170,220,0.65)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Enter free-look</div>
           </div>
-          <div style={{ width:1, height:36, background:'rgba(100,160,255,0.15)' }}/>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.3)', borderRadius:6, padding:'4px 14px', color:'rgba(200,220,255,0.9)', fontSize:12, fontFamily:'monospace', fontWeight:'bold' }}>Esc</div>
-            <div style={{ color:'rgba(140,170,220,0.7)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Release</div>
+          <div style={{ width:1, height:40, background:'rgba(100,160,255,0.15)' }}/>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:8, padding:'6px 18px', color:'rgba(200,220,255,0.95)', fontSize:13, fontFamily:'monospace', fontWeight:'bold' }}>Esc</div>
+            <div style={{ color:'rgba(140,170,220,0.65)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Release</div>
           </div>
-          <div style={{ width:1, height:36, background:'rgba(100,160,255,0.15)' }}/>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-            <div style={{ display:'flex', gap:4 }}>
+          <div style={{ width:1, height:40, background:'rgba(100,160,255,0.15)' }}/>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+            <div style={{ display:'flex', gap:5 }}>
               {['W','A','S','D'].map(k => (
-                <div key={k} style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.3)', borderRadius:4, padding:'4px 8px', color:'rgba(200,220,255,0.9)', fontSize:11, fontFamily:'monospace', fontWeight:'bold' }}>{k}</div>
+                <div key={k} style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:6, padding:'5px 9px', color:'rgba(200,220,255,0.95)', fontSize:12, fontFamily:'monospace', fontWeight:'bold' }}>{k}</div>
               ))}
             </div>
-            <div style={{ color:'rgba(140,170,220,0.7)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Move</div>
+            <div style={{ color:'rgba(140,170,220,0.65)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Move</div>
           </div>
         </div>
+      </div>
+
+      {/* Persistent small hint at bottom */}
+      <div style={{ position:'absolute', bottom:16, left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:30, color:'rgba(140,180,255,0.4)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.15em', whiteSpace:'nowrap' }}>
+        CLICK TO ENTER FREE-LOOK · ESC TO RELEASE
       </div>
 
       <Canvas style={{ position:'absolute', inset:0 }}>
