@@ -958,6 +958,7 @@ export default function SpaceExplorerView() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [cursorInside, setCursorInside] = useState(false);
   const [pointerLocked, setPointerLocked] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const mouseInsideRef = useRef(false);
 
   useEffect(() => {
@@ -968,6 +969,12 @@ export default function SpaceExplorerView() {
     };
     document.addEventListener('pointerlockchange', onChange);
     return () => document.removeEventListener('pointerlockchange', onChange);
+  }, []);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
   const handleMouseDown = () => {
@@ -1016,7 +1023,7 @@ export default function SpaceExplorerView() {
   return (
     <div
       ref={wrapperRef}
-      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', cursor: cursorInside ? 'none' : 'default' }}
+      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', cursor: (cursorInside || isFullscreen) ? 'none' : 'default' }}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => { setCursorInside(true); mouseInsideRef.current = true; }}
       onMouseLeave={() => { if (!pointerLocked) { setCursorInside(false); mouseInsideRef.current = false; } }}
