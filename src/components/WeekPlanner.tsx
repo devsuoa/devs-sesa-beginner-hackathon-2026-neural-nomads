@@ -265,7 +265,7 @@ export default function WeekPlanner({ weatherDays, userLat, userLon, city, onSel
   const tonightMoon = getMoonPhase(new Date());
 
   return (
-    <div className="min-h-screen pt-20 pb-16">
+    <div className="min-h-screen pt-28 md:pt-20 pb-16">
 
       {/* ── Hero (full-bleed) ── */}
       <motion.div

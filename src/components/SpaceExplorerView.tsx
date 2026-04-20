@@ -548,8 +548,46 @@ function FirstPersonController({
       euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x - dy * 0.003));
       camera.quaternion.setFromEuler(euler.current);
     };
+
+    // ── Touch drag for mobile ──────────────────────────────────────────────
+    const lastTouch = { x: 0, y: 0, active: false };
+    const onTouchStart = (e: TouchEvent) => {
+      // Skip if touch began on an interactive UI element
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('button, a, [data-no-look]')) return;
+      const t = e.touches[0];
+      if (!t) return;
+      lastTouch.x = t.clientX;
+      lastTouch.y = t.clientY;
+      lastTouch.active = true;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!lastTouch.active) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - lastTouch.x;
+      const dy = t.clientY - lastTouch.y;
+      lastTouch.x = t.clientX;
+      lastTouch.y = t.clientY;
+      euler.current.y -= dx * 0.005;
+      euler.current.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.current.x - dy * 0.005));
+      camera.quaternion.setFromEuler(euler.current);
+      e.preventDefault();
+    };
+    const onTouchEnd = () => { lastTouch.active = false; };
+
     window.addEventListener('mousemove', onMove);
-    return () => { window.removeEventListener('mousemove', onMove); };
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('touchcancel', onTouchEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
   }, [camera, mouseInsideRef]);
 
   const fwd = useRef(new THREE.Vector3());
@@ -862,45 +900,22 @@ function CockpitHUD({ speed, lockedPlanet, flying }: { speed: number; lockedPlan
           </div>
         </div>
 
-        {/* Centre — body info panel */}
-        {body ? (
-          <div style={{ position:'absolute', left:'22%', right:'22%', top:'18%', bottom:'8%', display:'flex', gap:18, alignItems:'center', border:'1px solid rgba(100,160,255,0.15)', borderRadius:6, padding:'0 14px', background:'rgba(5,12,28,0.35)' }}>
-            <img
-              src={`${import.meta.env.BASE_URL}${body.image.replace(/^\//, '')}`}
-              alt={body.name}
-              style={{ width:130, height:130, objectFit:'cover', borderRadius:10, border:'1px solid rgba(100,160,255,0.3)', flexShrink:0 }}
-            />
-            <div style={{ flex:1, overflow:'auto', maxHeight:'100%' }}>
-              <div style={{ color:'rgba(100,160,255,0.5)', fontSize:'10px', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:4 }}>BODY LOG</div>
-              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
-                <div style={{ fontWeight:'bold', fontSize:17, color:'white' }}>{body.name}</div>
-                {body.wiki && (
-                  <a
-                    href={body.wiki}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ pointerEvents:'auto', color:'rgba(120,200,255,0.9)', fontSize:'11px', fontFamily:'monospace', textDecoration:'none', border:'1px solid rgba(100,160,255,0.4)', borderRadius:4, padding:'2px 8px', background:'rgba(40,80,180,0.25)', letterSpacing:'0.05em' }}
-                  >
-                    WIKIPEDIA ↗
-                  </a>
-                )}
-              </div>
-              <div style={{ color:'rgba(180,200,240,0.8)', fontSize:'11px', lineHeight:1.5, marginBottom:10 }}>{body.info}</div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:'5px 9px' }}>
-                {body.facts.map(f => (
-                  <span key={f} style={{ color:'rgba(120,200,255,0.8)', fontSize:'10px', fontFamily:'monospace', background:'rgba(40,80,180,0.2)', borderRadius:3, padding:'2px 6px' }}>{f}</span>
-                ))}
-              </div>
-            </div>
+        {/* Centre — sensor standby placeholder (body info now shown in floating popup outside cockpit) */}
+        <div style={{ position:'absolute', left:'22%', right:'22%', top:'18%', bottom:'8%', display:'flex', alignItems:'center', justifyContent:'center', border:'1px dashed rgba(60,90,180,0.25)', borderRadius:6, background:'rgba(5,12,28,0.2)' }}>
+          <div style={{ color: body ? 'rgba(120,200,255,0.7)' : 'rgba(80,120,200,0.5)', fontSize:'11px', fontFamily:'monospace', letterSpacing:'0.2em', textAlign:'center' }}>
+            {body ? (
+              <>
+                ⊡ SCAN COMPLETE ⊡<br/>
+                <span style={{ fontSize:9, color:'rgba(120,200,255,0.55)', letterSpacing:'0.15em' }}>TARGET: {body.name.toUpperCase()} — DATA UPLINK ABOVE</span>
+              </>
+            ) : (
+              <>
+                ⊡ SENSOR ARRAY STANDBY ⊡<br/>
+                <span style={{ fontSize:9, color:'rgba(60,90,180,0.35)', letterSpacing:'0.15em' }}>AIM AT A CELESTIAL BODY TO INITIATE SCAN</span>
+              </>
+            )}
           </div>
-        ) : (
-          <div style={{ position:'absolute', left:'22%', right:'22%', top:'18%', bottom:'8%', display:'flex', alignItems:'center', justifyContent:'center', border:'1px dashed rgba(60,90,180,0.25)', borderRadius:6, background:'rgba(5,12,28,0.2)' }}>
-            <div style={{ color:'rgba(80,120,200,0.5)', fontSize:'11px', fontFamily:'monospace', letterSpacing:'0.2em', textAlign:'center' }}>
-              ⊡ SENSOR ARRAY STANDBY ⊡<br/>
-              <span style={{ fontSize:9, color:'rgba(60,90,180,0.35)', letterSpacing:'0.15em' }}>AIM AT A CELESTIAL BODY TO INITIATE SCAN</span>
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Right panel — ship stats / "bulkhead" */}
         <div style={{ position:'absolute', right:'3%', top:'55%', transform:'translateY(-50%)', fontFamily:'monospace', textAlign:'right' }}>
@@ -1025,7 +1040,7 @@ export default function SpaceExplorerView() {
   return (
     <div
       ref={wrapperRef}
-      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', overflow:'hidden', cursor: pointerLocked ? 'none' : 'default' }}
+      style={{ width:'100%', height:'100vh', position:'relative', background:'#020810', overflow:'hidden', cursor: pointerLocked ? 'none' : 'default', touchAction:'none' }}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => { setCursorInside(true); mouseInsideRef.current = true; }}
       onMouseLeave={() => { if (!pointerLocked) { setCursorInside(false); mouseInsideRef.current = false; } }}
@@ -1053,32 +1068,31 @@ export default function SpaceExplorerView() {
       </div>
 
       {/* Controls hint popup — centre of screen */}
-      <div onMouseDown={e => e.stopPropagation()} style={{
+      <div onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} style={{
         position:'absolute', top:'50%', left:'50%', transform:`translate(-50%, calc(-50% + ${showHint ? 0 : 30}px))`,
         opacity: showHint ? 1 : 0, transition:'opacity 0.6s ease, transform 0.6s ease',
         pointerEvents: showHint ? 'auto' : 'none', zIndex:9999,
         background:'rgba(6,12,28,0.88)', border:'1px solid rgba(100,160,255,0.3)',
-        borderRadius:16, padding:'28px 36px 24px', backdropFilter:'blur(16px)',
+        borderRadius:16, padding:'24px 24px 20px', backdropFilter:'blur(16px)',
         boxShadow:'0 8px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(100,160,255,0.1)',
-        display:'flex', flexDirection:'column', alignItems:'center', gap:18, minWidth:320,
+        display:'flex', flexDirection:'column', alignItems:'center', gap:18,
+        width:'min(360px, calc(100vw - 32px))',
       }}>
         {/* Header + X */}
         <div style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ color:'rgba(180,210,255,0.55)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.22em', textTransform:'uppercase' }}>Controls</div>
-          <button onMouseDown={e => e.stopPropagation()} onClick={() => { setShowHint(false); wrapperRef.current?.requestPointerLock(); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(140,170,220,0.6)', fontSize:16, lineHeight:1, padding:'0 2px' }}>✕</button>
+          <button onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onClick={() => { setShowHint(false); wrapperRef.current?.requestPointerLock(); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(140,170,220,0.6)', fontSize:18, lineHeight:1, padding:'4px 8px' }}>✕</button>
         </div>
         {/* Keys */}
-        <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+        <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'14px 16px', alignItems:'center' }}>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:8, padding:'6px 18px', color:'rgba(200,220,255,0.95)', fontSize:13, fontFamily:'monospace', fontWeight:'bold' }}>Click</div>
+            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:8, padding:'6px 16px', color:'rgba(200,220,255,0.95)', fontSize:13, fontFamily:'monospace', fontWeight:'bold' }}>Click</div>
             <div style={{ color:'rgba(140,170,220,0.65)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Enter free-look</div>
           </div>
-          <div style={{ width:1, height:40, background:'rgba(100,160,255,0.15)' }}/>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:8, padding:'6px 18px', color:'rgba(200,220,255,0.95)', fontSize:13, fontFamily:'monospace', fontWeight:'bold' }}>Esc</div>
+            <div style={{ background:'rgba(100,160,255,0.15)', border:'1px solid rgba(100,160,255,0.35)', borderRadius:8, padding:'6px 16px', color:'rgba(200,220,255,0.95)', fontSize:13, fontFamily:'monospace', fontWeight:'bold' }}>Esc</div>
             <div style={{ color:'rgba(140,170,220,0.65)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Release</div>
           </div>
-          <div style={{ width:1, height:40, background:'rgba(100,160,255,0.15)' }}/>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
             <div style={{ display:'flex', gap:5 }}>
               {['W','A','S','D'].map(k => (
@@ -1087,6 +1101,9 @@ export default function SpaceExplorerView() {
             </div>
             <div style={{ color:'rgba(140,170,220,0.65)', fontSize:10, fontFamily:'monospace', letterSpacing:'0.1em' }}>Move</div>
           </div>
+        </div>
+        <div style={{ color:'rgba(255,200,100,0.7)', fontSize:10, fontFamily:'monospace', textAlign:'center', lineHeight:1.5, paddingTop:4, borderTop:'1px solid rgba(100,160,255,0.12)', width:'100%' }}>
+          Free-look uses Pointer Lock — best on desktop. On touch devices, tap planet buttons to navigate.
         </div>
       </div>
 
@@ -1122,8 +1139,61 @@ export default function SpaceExplorerView() {
 
       <CockpitHUD speed={speed} lockedPlanet={selected} flying={flying}/>
 
+      {/* Floating BODY INFO popup — sits outside the cockpit dashboard so the dashboard is free for navigation/look-around */}
+      {(() => {
+        const body = ALL_BODIES.find(b => b.name === selected);
+        if (!body) return null;
+        return (
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+            data-no-look
+            style={{
+              position:'absolute', top:96, left:'50%', transform:'translateX(-50%)',
+              width:'min(440px, calc(100vw - 24px))', zIndex:55, pointerEvents:'auto',
+              background:'rgba(6,12,28,0.92)', border:'1px solid rgba(100,160,255,0.35)',
+              borderRadius:12, padding:'10px 12px', backdropFilter:'blur(14px)',
+              boxShadow:'0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(100,160,255,0.1)',
+              display:'flex', gap:10, alignItems:'flex-start',
+            }}
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}${body.image.replace(/^\//, '')}`}
+              alt={body.name}
+              style={{ width:64, height:64, objectFit:'cover', borderRadius:8, border:'1px solid rgba(100,160,255,0.3)', flexShrink:0 }}
+            />
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                <div style={{ color:'rgba(100,160,255,0.55)', fontSize:9, fontFamily:'monospace', letterSpacing:'0.12em' }}>BODY LOG</div>
+                <div style={{ fontWeight:'bold', fontSize:14, color:'white' }}>{body.name}</div>
+                {body.wiki && (
+                  <a
+                    href={body.wiki} target="_blank" rel="noopener noreferrer"
+                    onMouseDown={e => e.stopPropagation()}
+                    onTouchStart={e => e.stopPropagation()}
+                    style={{ color:'rgba(120,200,255,0.95)', fontSize:10, fontFamily:'monospace', textDecoration:'none', border:'1px solid rgba(100,160,255,0.4)', borderRadius:4, padding:'1px 6px', background:'rgba(40,80,180,0.25)', letterSpacing:'0.04em' }}
+                  >WIKI ↗</a>
+                )}
+                <button
+                  onClick={() => setSelected(null)}
+                  onMouseDown={e => e.stopPropagation()}
+                  onTouchStart={e => e.stopPropagation()}
+                  style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(160,180,220,0.6)', cursor:'pointer', fontSize:14, lineHeight:1, padding:'0 2px' }}
+                >✕</button>
+              </div>
+              <div style={{ color:'rgba(180,200,240,0.85)', fontSize:11, lineHeight:1.45, marginBottom:6 }}>{body.info}</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 6px' }}>
+                {body.facts.map(f => (
+                  <span key={f} style={{ color:'rgba(120,200,255,0.85)', fontSize:9.5, fontFamily:'monospace', background:'rgba(40,80,180,0.22)', borderRadius:3, padding:'1px 5px' }}>{f}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Destinations nav — "JUMP CONSOLE" horizontal row at top of canvas, clear of the right-side radar/HUD */}
-      <div onMouseDown={e => e.stopPropagation()} style={{ position:'absolute', top:88, right:12, zIndex:60, display:'flex', flexDirection:'column', gap:2, pointerEvents:'auto', padding:'6px 8px 8px', background:'linear-gradient(to bottom, rgba(12,20,42,0.85), rgba(8,14,32,0.9))', border:'1px solid rgba(80,130,220,0.35)', borderRadius:8, boxShadow:'inset 0 1px 0 rgba(120,180,255,0.15), 0 0 10px rgba(0,0,0,0.5)' }}>
+      <div onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} className="explorer-jump-console" style={{ position:'absolute', right:8, zIndex:60, display:'flex', flexDirection:'column', gap:2, pointerEvents:'auto', padding:'6px 8px 8px', background:'linear-gradient(to bottom, rgba(12,20,42,0.85), rgba(8,14,32,0.9))', border:'1px solid rgba(80,130,220,0.35)', borderRadius:8, boxShadow:'inset 0 1px 0 rgba(120,180,255,0.15), 0 0 10px rgba(0,0,0,0.5)', maxHeight:'calc(100vh - 160px)', overflowY:'auto' }}>
         <div style={{ color:'rgba(100,180,255,0.75)', fontSize:9, fontFamily:'monospace', letterSpacing:'0.2em', marginBottom:4, textAlign:'left', display:'flex', alignItems:'center', gap:6 }}>
           <div style={{ width:5, height:5, borderRadius:'50%', background:'rgba(100,255,150,0.9)', boxShadow:'0 0 4px rgba(100,255,150,0.7)', animation:'hud-blink 1.6s infinite' }}/>
           JUMP CONSOLE

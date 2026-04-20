@@ -886,7 +886,7 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
   const info = selected ? CONSTELLATION_INFO[selected] : null;
 
   return (
-    <div ref={containerRef} className="w-full relative" style={{ height: '100vh', overflow: 'hidden', cursor: 'none' }}>
+    <div ref={containerRef} className="w-full relative [&_canvas]:touch-none" style={{ height: '100vh', overflow: 'hidden', cursor: 'none' }}>
       {/* Canvas — fills entire viewport */}
       <canvas
         ref={canvasRef}
@@ -899,18 +899,18 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
       />
 
       {/* Header — overlaid, non-blocking */}
-      <div className="absolute top-0 left-0 right-0 pt-5 pb-2 text-center z-10 pointer-events-none">
-        <p className="text-slate-400 text-[11px] uppercase tracking-widest mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>Southern Hemisphere</p>
-        <h2 className="text-white font-bold text-2xl" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}>
+      <div className="absolute top-0 left-0 right-0 pt-28 md:pt-24 pb-2 text-center z-10 pointer-events-none px-4">
+        <p className="text-slate-400 text-[10px] sm:text-[11px] uppercase tracking-widest mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>Southern Hemisphere</p>
+        <h2 className="text-white font-bold text-xl sm:text-2xl" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}>
           <span className="text-gradient">Interactive Sky Map</span>
         </h2>
-        <p className="text-slate-400 text-xs mt-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>Real-time positions for your location</p>
+        <p className="text-slate-400 text-[11px] sm:text-xs mt-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>Real-time positions for your location</p>
       </div>
 
       {/* Zoom controls */}
       <div
         className="absolute z-20 flex flex-col gap-1"
-        style={{ right: 16, top: '50%', transform: 'translateY(-50%)' }}
+        style={{ right: 8, top: '50%', transform: 'translateY(-50%)' }}
       >
         {[
           { label: '+', action: () => { targetZoomRef.current = Math.min(3.5, targetZoomRef.current * 1.25); } },
@@ -946,13 +946,12 @@ export default function SkyMapView({ userLat = -36.86, userLon = 174.76 }: Props
 
       {/* Constellation list — left side */}
       <div
-        className="absolute z-20"
+        className="absolute z-20 w-[42vw] sm:w-[180px] max-w-[180px]"
         style={{
-          left: 16,
+          left: 8,
           top: '50%',
           transform: 'translateY(-50%)',
-          width: 180,
-          maxHeight: '70vh',
+          maxHeight: '60vh',
           background: 'rgba(10,16,36,0.75)',
           border: '1px solid rgba(120,160,255,0.25)',
           borderRadius: 10,

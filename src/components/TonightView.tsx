@@ -329,7 +329,7 @@ export default function TonightView({ userLat, userLon, city, iss }: Props) {
   const now = new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pt-32 md:pt-24 pb-16 px-4">
       <div className="max-w-6xl mx-auto">
 
         {/* Hero */}

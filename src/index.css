@@ -80,3 +80,22 @@ body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* Hide scrollbar utility for horizontal scroll containers */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Space Explorer — Jump Console responsive top position */
+.explorer-jump-console { top: 88px; }
+@media (max-width: 768px) {
+  .explorer-jump-console { top: 130px; max-width: 44vw; }
+  .explorer-jump-console button span { font-size: 8px; }
+}
+
+/* Prevent body horizontal scroll on any screen */
+html, body { max-width: 100vw; overflow-x: hidden; }
+
+/* Better tap targets on touch devices */
+@media (pointer: coarse) {
+  button, a { min-height: 36px; }
+}
